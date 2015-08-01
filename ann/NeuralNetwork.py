@@ -72,7 +72,7 @@ class Neuron:
         self.max_depth = max_depth
         self.depth = depth
         self.target = target # only final Neurons should have a non None target
-        self.output = None # the cross product of current input vector and current weights
+        self.output = None # the dot product of current input vector and current weights
         self.input_vector = [] 
         self.weights = []
         self.layer_type = None
