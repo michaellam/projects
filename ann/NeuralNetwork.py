@@ -15,6 +15,7 @@ class NeuralNetwork:
         self.input_size = input_size
         self.minimum_error = minimum_error
         self.max_depth = len(sizes) - 1
+        self.verbose = verbose
         for x in range(0, len(sizes)):
             if (x==0):
                 input_size = self.input_size
@@ -22,7 +23,7 @@ class NeuralNetwork:
                 input_size = self.sizes[x-1]
             # final depth goes from left to right
             depth = x
-            self.layers.append(Layer(sizes[x], input_size, depth, self.max_depth))
+            self.layers.append(Layer(sizes[x], input_size, depth, self.max_depth, verbose=self.verbose))
             
     """
     The ForwardPass method takes in an input vector and a target vector, 
@@ -39,22 +40,25 @@ class NeuralNetwork:
                     """ 
                     % (len(target_vector), len(output_layer_neurons))
             )
-        print "Feeding forward now. With this original input vector:"
-        print input_vector
-        net_has_hidden_layers = len(self.sizes) > 2
-        
+        if self.verbose:
+            print "Feeding forward now. With this original input vector:"
+            print input_vector
+
         original_input = input_vector
         for idx, layer in enumerate(self.layers):
-            print "processing layer number %d" % idx
-            
+            if self.verbose:
+                print "processing layer number %d" % idx            
             if get_my_layer_type(layer.depth, self.max_depth) == "input":
-                print "I was input layer"
+                if self.verbose:
+                    print "I was input layer"
                 layer.process_input_vector(original_input)
             else:
-                print "I was not input layer"
+                if self.verbose:
+                    print "I was not input layer"
                 previous_layer_output = self.layers[idx - 1].output_vector
                 layer.process_input_vector(previous_layer_output)
-        print "Done feeding input through forward pass"
+        if self.verbose:
+            print "Done feeding input through forward pass"
         return self.layers[len(self.layers)-1].output_vector
                 
             
@@ -63,7 +67,7 @@ class Neuron:
     """
     Note: max_depth is N-1 if there are N layers to the ANN.
     """
-    def __init__(self, input_size, depth, max_depth, target=None):
+    def __init__(self, input_size, depth, max_depth, target=None, verbose=False):
         self.input_size = input_size
         self.max_depth = max_depth
         self.depth = depth
@@ -72,6 +76,7 @@ class Neuron:
         self.input_vector = [] 
         self.weights = []
         self.layer_type = None
+        self.verbose = verbose
         for x in range(0, self.input_size):
             self.weights.append(Utils.generate_random_weight())
         self.layer_type = get_my_layer_type(self.depth, self.max_depth)
@@ -110,8 +115,9 @@ class Neuron:
         for x in range(0, len(input_vector)):
             output += self.weights[x] * input_vector[x]
         self.output = output
-        print 'Processing input vector: '
-        self.print_debug_info()
+        if self.verbose:
+            print 'Processing input vector: '
+            self.print_debug_info()
         return output
 
 """
@@ -120,21 +126,23 @@ an input vector, and giving an output vector that will be the input vector
 for the next layer in front of it.
 """
 class Layer:
-    def __init__(self, width, input_size, depth, max_depth):
+    def __init__(self, width, input_size, depth, max_depth, verbose=False):
         self.width = width
         self.neurons = []
         self.depth = depth
         self.max_depth = max_depth
         self.output_vector = [] # overwritten each pass
         self.input_vector = [] # overwritten each pass
+        self.verbose = verbose
         for x in range (0, self.width):
-            self.neurons.append(Neuron(input_size, depth, max_depth))
+            self.neurons.append(Neuron(input_size, depth, max_depth, verbose=self.verbose))
             
     def process_input_vector(self, input_vector):
         self.output_vector = []
         self.input_vector = input_vector
-        print 'Processing input vector: '
-        print input_vector
+        if self.verbose:
+            print 'Processing input vector: '
+            print input_vector
         for neuron in self.neurons:
             self.output_vector.append(neuron.process_input_vector(input_vector))
 
@@ -143,11 +151,12 @@ Layer type is directly related to its depth in relation to the max
 depth of the neural network. A Neuron and Layer could potentially require
 needing to know which type of layer it is in when making decisions.
 """
-def get_my_layer_type(my_depth, max_depth):
+def get_my_layer_type(my_depth, max_depth, verbose=False):
     net_has_hidden_layers = max_depth > 1 # zero indexed, needs at least 3 layers to have hidden layer
-    print "Get my layer called."
-    print "my depth: " + str(my_depth)
-    print "max depth: " + str(max_depth)
+    if verbose:
+        print "Get my layer called."
+        print "my depth: " + str(my_depth)
+        print "max depth: " + str(max_depth)
     my_type = 'unknown'
     if (my_depth == max_depth):
         my_type = 'final'
@@ -163,10 +172,6 @@ def get_my_layer_type(my_depth, max_depth):
                             Could not determine type of this Layer.
                              This layer's depth is %d while max depth was %d."""
                              % (my_depth, max_depth))    
-    print "layer type was determined as: " + my_type
-    return my_type
-            
-            
-            
-            
-        
+    if verbose:
+        print "layer type was determined as: " + my_type
+    return my_type    
