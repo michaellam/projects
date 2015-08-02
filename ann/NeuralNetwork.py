@@ -24,9 +24,9 @@ class NeuralNetwork:
             # final depth goes from left to right
             depth = x
             self.layers.append(Layer(sizes[x], input_size, depth, self.max_depth, verbose=self.verbose))
-            
+    
     """
-    The ForwardPass method takes in an input vector and a target vector, 
+    The forward_pass method takes in an input vector and a target vector, 
     feeds it through all neurons, and returns an output vector with 
     the same dimensionality of the target vector.
     """
@@ -60,8 +60,35 @@ class NeuralNetwork:
         if self.verbose:
             print "Done feeding input through forward pass"
         return self.layers[len(self.layers)-1].output_vector
+        
+    """
+    Back propogate method should be called after a forward pass if the 
+    error from the final output layer and target vector is not sufficiently 
+    small.
+    
+    This method goes backwards layer by layer, and updates the weights
+    of neurons in each layer as it goes. Once it has updated the weights
+    of all neurons in the network, the network is ready for a new
+    forward pass with input and target vectors.
+    """
+    def back_propogate(self):
+        """Pseudo code"""
+        """
+        for layer in self.layers:
+            for neuron in layer.neurons:
+                if type final:
+                    calculate error with target
+                if type hidden or output:
+                    calculate error with +1 layer error vector
+                if type input:
+                    return None
+        """
+        for layer in self.layers:
+            for neuron in layer.neurons:
+                neuron.calculate_my_error(target=self.target)
                 
-            
+
+        
         
 class Neuron:
     """
@@ -72,14 +99,18 @@ class Neuron:
         self.max_depth = max_depth
         self.depth = depth
         self.target = target # only final Neurons should have a non None target
-        self.output = None # the dot product of current input vector and current weights
-        self.input_vector = [] 
+        self.output = None # the dot product of current input vector and current weights, overwritten on each forward pass
+        self.input_vector = [] # overwritten on forward pass
         self.weights = []
-        self.layer_type = None
+        self.layer_type = self.get_my_layer_type()
         self.verbose = verbose
+        self.error = None
         for x in range(0, self.input_size):
             self.weights.append(Utils.generate_random_weight())
         self.layer_type = get_my_layer_type(self.depth, self.max_depth)
+
+    def get_my_layer_type(self):
+        return get_my_layer_type(self.depth, self.max_depth)
 
     """
     Returns info about this Neuron for debugging purposes
@@ -119,6 +150,26 @@ class Neuron:
             print 'Processing input vector: '
             self.print_debug_info()
         return output
+        
+        
+    """
+    The calculate_my_error function calculates and then sets an error value 
+    on the self object. 
+    
+    The error is determined differently depending on the neuron type.
+    
+    If layer type is:
+    final:
+        Straightforward: E = Output * (1-Output) * (Target - Output)
+        
+    output || hidden:
+        More involved: E = Output * (1-Output) * ( Error Vector of + 1 layer dotted with Weights Vector of this layer)
+        
+    input:
+        No error is calculated for input layer, since input layer weights can be updated
+        using only the errors from the +1 layer.
+        
+    """
 
 """
 The Layer is an array of Neurons. The Layer is repsonsible for taking in 
@@ -134,9 +185,14 @@ class Layer:
         self.output_vector = [] # overwritten each pass
         self.input_vector = [] # overwritten each pass
         self.verbose = verbose
+        self.error_vector = []
+        self.layer_type = self.get_my_layer_type()
         for x in range (0, self.width):
             self.neurons.append(Neuron(input_size, depth, max_depth, verbose=self.verbose))
             
+    def get_my_layer_type(self):
+        return get_my_layer_type(self.depth, self.max_depth)        
+        
     def process_input_vector(self, input_vector):
         self.output_vector = []
         self.input_vector = input_vector
@@ -145,6 +201,11 @@ class Layer:
             print input_vector
         for neuron in self.neurons:
             self.output_vector.append(neuron.process_input_vector(input_vector))
+            
+    def load_error_vector(self):
+        self.error_vector = []
+        for neuron in self.neurons:
+            self.error_vector.append(neuron.error)
 
 """
 Layer type is directly related to its depth in relation to the max
