@@ -101,7 +101,7 @@ class Neuron:
     """
     Note: max_depth is N-1 if there are N layers to the ANN.
     """
-    def __init__(self, input_size, depth, max_depth, target=None, verbose=False):
+    def __init__(self, input_size, depth, max_depth, target=None, verbose=False, height=None):
         self.input_size = input_size
         self.max_depth = max_depth
         self.depth = depth
@@ -112,6 +112,7 @@ class Neuron:
         self.layer_type = self.get_my_layer_type()
         self.verbose = verbose
         self.error = None
+        self.height = height
         for x in range(0, self.input_size):
             self.weights.append(Utils.generate_random_weight())
         self.layer_type = get_my_layer_type(self.depth, self.max_depth)
@@ -127,6 +128,7 @@ class Neuron:
         print '== Im a Neuron =='
         print 'My type: ' + self.layer_type
         print 'My depth: ' + str(self.depth)
+        print 'My height: ' + str(self.height)
         print 'My output: ' + str(self.output)
         print 'My target: ' + str(self.target)
         print 'My Error: ' + str(self.error)
@@ -184,8 +186,21 @@ class Neuron:
         if my_layer_type=='final':
             error = self.output * (1 - self.output) * (self.target - self.output)
         elif (my_layer_type=='output') or (my_layer_type=='hidden'):
-            print 'bar'
+            if self.verbose:
+                print 'Calculating internal error of hidden or output level neuron.'
+            if plus_one_layer == None:
+                raise ValueError("""Since this neuron is hidden or output type,
+                                     it requires a plus one layer, however it was supplied
+                                     with None when calculating its error""")
+            plus_one_layer.load_error_vector() # get updated values of errors from its neurons
+            error_vector = plus_one_layer.error_vector
+            my_weights_dot_error = 0
+            for x in range(0, len(self.weights)):
+                print 'foo'
+                
+            
         else:
+            print 'bar'
             return # input layer does not have error vector
         self.error = error
             
@@ -209,7 +224,7 @@ class Layer:
         self.target_vector = target_vector
         self.layer_type = self.get_my_layer_type()
         for x in range (0, self.width):
-            self.neurons.append(Neuron(input_size, depth, max_depth, verbose=self.verbose))
+            self.neurons.append(Neuron(input_size, depth, max_depth, verbose=self.verbose, height=x))
             
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)        
