@@ -171,7 +171,7 @@ class NeuralNetwork:
         error = 0
         for layer in self.layers:
             for neuron in layer.neurons:
-                error += neuron.error
+                error += abs(neuron.error)
         return error
         
     def print_outputs(self):
