@@ -76,17 +76,6 @@ class NeuralNetwork:
     forward pass.
     """
     def back_propogate_error(self):
-        """Pseudo code"""
-        """
-        for layer in self.layers:
-            for neuron in layer.neurons:
-                if type final:
-                    calculate error with target
-                if type hidden or output:
-                    calculate error with +1 layer error vector
-                if type input:
-                    return None
-        """
         for x in range(len(self.layers), 0, -1): # go from final to input layer
             layer = self.layers[x-1]
             plus_one_layer = None
@@ -179,7 +168,7 @@ class Neuron:
         Straightforward: E = Output * (1-Output) * (Target - Output)
         
     output || hidden:
-        More involved: E = Output * (1-Output) * ( Error Vector of + 1 layer dotted with Weights Vector of this layer)
+        More involved: E = Output * (1-Output) * ( Sum of Each Plus One neuron's error multiplied by its corresponding weight for the self neuron calculating its error)
         
     input:
         No error is calculated for input layer, since input layer weights can be updated
