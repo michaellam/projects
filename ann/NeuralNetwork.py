@@ -16,6 +16,7 @@ class NeuralNetwork:
         self.minimum_error = minimum_error
         self.max_depth = len(sizes) - 1
         self.verbose = verbose
+        self.target_vector = None # only set when doing a forward pass
         for x in range(0, len(sizes)):
             if (x==0):
                 input_size = self.input_size
@@ -31,6 +32,7 @@ class NeuralNetwork:
     the same dimensionality of the target vector.
     """
     def forward_pass(self, input_vector, target_vector):
+        self.target_vector = target_vector
         output_layer_neurons = self.layers[len(self.layers)-1].neurons
         if len(target_vector) != len(output_layer_neurons):
             raise ValueError(
@@ -56,7 +58,7 @@ class NeuralNetwork:
                 if self.verbose:
                     print "I was not input layer"
                 previous_layer_output = self.layers[idx - 1].output_vector
-                layer.process_input_vector(previous_layer_output)
+                layer.process_input_vector(previous_layer_output, target_vector = self.target_vector)
         if self.verbose:
             print "Done feeding input through forward pass"
         return self.layers[len(self.layers)-1].output_vector
@@ -66,12 +68,14 @@ class NeuralNetwork:
     error from the final output layer and target vector is not sufficiently 
     small.
     
-    This method goes backwards layer by layer, and updates the weights
-    of neurons in each layer as it goes. Once it has updated the weights
-    of all neurons in the network, the network is ready for a new
-    forward pass with input and target vectors.
+    This method goes backwards layer by layer, and calculates the error
+    for each applicable Neuron.
+    
+    After this method is called, all error is current in the Network, and
+    a method update_weights should then be called before doing another 
+    forward pass.
     """
-    def back_propogate(self):
+    def back_propogate_error(self):
         """Pseudo code"""
         """
         for layer in self.layers:
@@ -84,11 +88,14 @@ class NeuralNetwork:
                     return None
         """
         for layer in self.layers:
+            plus_one_layer = None
+            if layer.layer_type != 'final':
+                plus_one_layer = self.layers[layer.depth + 1]
             for neuron in layer.neurons:
-                neuron.calculate_my_error(target=self.target)
+                neuron.calculate_my_error(target=self.target, plus_one_layer=plus_one_layer)
+        if self.verbose:
+            print "Finished backpropogating error"
                 
-
-        
         
 class Neuron:
     """
@@ -170,6 +177,18 @@ class Neuron:
         using only the errors from the +1 layer.
         
     """
+    def calculate_my_error(self, target=None, plus_one_layer=None):
+        my_layer_type = self.layer_type
+        error = 0
+        if my_layer_type=='final':
+            print 'foo'
+            
+        elif my_layer_type=='output' | my_layer_type=='hidden':
+            print 'bar'
+        else:
+            return # input layer does not have error vector
+            
+        
 
 """
 The Layer is an array of Neurons. The Layer is repsonsible for taking in 
@@ -177,7 +196,7 @@ an input vector, and giving an output vector that will be the input vector
 for the next layer in front of it.
 """
 class Layer:
-    def __init__(self, width, input_size, depth, max_depth, verbose=False):
+    def __init__(self, width, input_size, depth, max_depth, verbose=False, target_vector=[]):
         self.width = width
         self.neurons = []
         self.depth = depth
@@ -186,6 +205,7 @@ class Layer:
         self.input_vector = [] # overwritten each pass
         self.verbose = verbose
         self.error_vector = []
+        self.target_vector = target_vector
         self.layer_type = self.get_my_layer_type()
         for x in range (0, self.width):
             self.neurons.append(Neuron(input_size, depth, max_depth, verbose=self.verbose))
@@ -193,14 +213,27 @@ class Layer:
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)        
         
-    def process_input_vector(self, input_vector):
+    def process_input_vector(self, input_vector, target_vector = None):
         self.output_vector = []
         self.input_vector = input_vector
         if self.verbose:
             print 'Processing input vector: '
             print input_vector
-        for neuron in self.neurons:
+        for idx, neuron in enumerate(self.neurons):
             self.output_vector.append(neuron.process_input_vector(input_vector))
+            if self.verbose:
+                print "Determining if final neuron for target attribution."
+            if neuron.layer_type == 'final':
+                my_target = target_vector[idx]
+                neuron.target = my_target
+                if self.verbose:
+                    print "This was a final neuron, so target was assigned of %d." % my_target
+            else:
+                if self.verbose:
+                    print "This was not a final neuron, so no target was assigned."
+            if self.verbose:
+                print "Info on this neuron:"
+                neuron.print_debug_info()
             
     def load_error_vector(self):
         self.error_vector = []
