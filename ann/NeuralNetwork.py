@@ -1,4 +1,5 @@
 import Utils
+import math
 
 class NeuralNetwork:
     """
@@ -137,7 +138,25 @@ class NeuralNetwork:
             total_error += abs(neuron.error)
         if self.verbose:
             print "Done calculating total error from output layer."
-        return total_error    
+        return total_error 
+        
+    def get_network_error(self):
+        error = 0
+        for layer in self.layers:
+            for neuron in layer.neurons:
+                error += neuron.error
+        return error
+        
+    def print_outputs(self):
+        output_layer = self.layers[self.max_depth]
+        print "==="
+        print "Outputs for neurons in output layer:"
+        for neuron in output_layer.neurons:
+            print 'Neuron height: ' + str(neuron.height)
+            print 'Neuron output: ' + str(neuron.output)
+            print 'Neuron target: ' + str(neuron.target)
+            print 'Neuron error: ' + str(neuron.error)
+            
                 
         
 class Neuron:
@@ -199,6 +218,7 @@ class Neuron:
         output = 0
         for x in range(0, len(input_vector)):
             output += self.weights[x] * input_vector[x]
+        output = 1.0 / (1.0 + math.exp(-output))
         self.output = output
         if self.verbose:
             print 'Processing input vector: '
