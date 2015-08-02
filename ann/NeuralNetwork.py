@@ -92,7 +92,7 @@ class NeuralNetwork:
             if layer.layer_type != 'final':
                 plus_one_layer = self.layers[layer.depth + 1]
             for neuron in layer.neurons:
-                neuron.calculate_my_error(target=self.target, plus_one_layer=plus_one_layer)
+                neuron.calculate_my_error(plus_one_layer=plus_one_layer)
         if self.verbose:
             print "Finished backpropogating error"
                 
@@ -129,6 +129,7 @@ class Neuron:
         print 'My depth: ' + str(self.depth)
         print 'My output: ' + str(self.output)
         print 'My target: ' + str(self.target)
+        print 'My Error: ' + str(self.error)
         print 'My weights:' + ', '.join(str(x) for x in self.weights)
         print 'My input vector: ' + ', '.join(str(x) for x in self.input_vector)
         print '== That is All =='
@@ -177,16 +178,16 @@ class Neuron:
         using only the errors from the +1 layer.
         
     """
-    def calculate_my_error(self, target=None, plus_one_layer=None):
+    def calculate_my_error(self, plus_one_layer=None):
         my_layer_type = self.layer_type
         error = 0
         if my_layer_type=='final':
-            print 'foo'
-            
-        elif my_layer_type=='output' | my_layer_type=='hidden':
+            error = self.output * (1 - self.output) * (self.target - self.output)
+        elif (my_layer_type=='output') or (my_layer_type=='hidden'):
             print 'bar'
         else:
             return # input layer does not have error vector
+        self.error = error
             
         
 
