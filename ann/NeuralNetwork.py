@@ -94,20 +94,6 @@ class NeuralNetwork:
     for each neuron.
     """
     def back_propogate_weights(self):
-        """ Pseudo code:
-        for backwards layer in self.layers:
-            layer from idx
-            minus_one_layer is None
-            original input vector is None
-            if type is not input:
-                minus_one_layer is self.layers[self.depth - 1]
-            elif type is input:
-                original_input_vector is self.input_vector
-            else
-                raise error
-            for neuron in layer.neurons:
-                neuron.update_my_weights(minus_one_layer=minus_one_layer, original_input_vector=original_input_vector)
-        """
         for x in range(len(self.layers), 0, -1): # go from final to input layer
             layer = self.layers[x-1]
             minus_one_layer = None
@@ -132,6 +118,26 @@ class NeuralNetwork:
         layer = self.layers[depth]
         neuron = layer.neurons[height]
         return neuron
+        
+    """
+    Get total error with this method. It returns abs value of all errors
+    for all output neurons.
+    """
+    def get_total_output_error(self):
+        total_error = 0
+        output_layer = self.layers[self.max_depth]
+        if output_layer.layer_type != 'final':
+            raise ValueError(
+                """
+                Called get total output error, but layer found had type %s.
+                """
+                % output_layer.layer_type
+            )
+        for neuron in output_layer.neurons:
+            total_error += abs(neuron.error)
+        if self.verbose:
+            print "Done calculating total error from output layer."
+        return total_error    
                 
         
 class Neuron:
