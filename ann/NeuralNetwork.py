@@ -3,11 +3,18 @@ import math
 
 class NeuralNetwork:
     """
-    Note: Layer indexes go from left to right (Index: Left 0 to N-1 Right), and 
-    depth also goes from left to right. So that input layers should have zero depth
-    values and output layers have max depth.
+    Note: Layer indexes go from left to right (Index: Left 0 to N-1 Right). 
+    Depth also goes from left to right. Given this, input layers should 
+    have zero depth values, and output layers should have max depth value.
     """
-    def __init__(self, input_size, learning_rate=1, sizes=[2,1], minimum_error=0.10, verbose=False):
+    def __init__(
+                    self, 
+                    input_size, 
+                    learning_rate=1, 
+                    sizes=[2,1], 
+                    minimum_error=0.10, 
+                    verbose=False
+    ):
         if (input_size == None):
             raise ValueError("Input size cannot be None type.")
         self.layers = []
@@ -23,16 +30,28 @@ class NeuralNetwork:
                 input_size = self.input_size
             else:
                 input_size = self.sizes[x-1]
-            # final depth goes from left to right
             depth = x
-            self.layers.append(Layer(sizes[x], input_size, depth, self.max_depth, self.learning_rate, verbose=self.verbose))
+            self.layers.append (
+                                Layer (
+                                        sizes[x], 
+                                        input_size, 
+                                        depth, 
+                                        self.max_depth, 
+                                        self.learning_rate, 
+                                        verbose=self.verbose
+                                )
+            )
     
     """
     The forward_pass method takes in an input vector and a target vector, 
     feeds it through all neurons, and returns an output vector with 
     the same dimensionality of the target vector.
     """
-    def forward_pass(self, input_vector, target_vector):
+    def forward_pass(
+                        self, 
+                        input_vector, 
+                        target_vector
+    ):
         self.target_vector = target_vector
         self.input_vector = input_vector # overwritten on each forward pass
         output_layer_neurons = self.layers[len(self.layers)-1].neurons
@@ -60,7 +79,10 @@ class NeuralNetwork:
                 if self.verbose:
                     print "I was not input layer"
                 previous_layer_output = self.layers[idx - 1].output_vector
-                layer.process_input_vector(previous_layer_output, target_vector = self.target_vector)
+                layer.process_input_vector(
+                                            previous_layer_output, 
+                                            target_vector = self.target_vector
+                )
         if self.verbose:
             print "Done feeding input through forward pass"
         return self.layers[len(self.layers)-1].output_vector
@@ -90,9 +112,10 @@ class NeuralNetwork:
             
             
     """
-    back_propogate_weights function is used after back_propogate_error is called.
-    The function will go from final layer to input layer, and update all weights 
-    for each neuron.
+    The back_propogate_weights function will go from final layer to 
+    input layer, and update all weights for each neuron.
+    This function should only be called after 
+    NeuralNetwork.back_propogate_error was called.
     """
     def back_propogate_weights(self):
         for x in range(len(self.layers), 0, -1): # go from final to input layer
@@ -107,11 +130,15 @@ class NeuralNetwork:
                 raise ValueError(
                     """
                     The layer type of this layer was %s and was not recognized
-                    when back propogating weights (NeuralNetwork.back_propogate_weights)
+                    when back propogating weights 
+                    (NeuralNetwork.back_propogate_weights)
                     """ % layer.layer_type
                 )
             for neuron in layer.neurons:
-                neuron.update_my_weights(minus_one_layer=minus_one_layer, original_input_vector=original_input_vector)
+                neuron.update_my_weights(
+                                    minus_one_layer=minus_one_layer, 
+                                    original_input_vector=original_input_vector
+                )
         if self.verbose:
             print 'Done updating all weights'
             
@@ -158,22 +185,54 @@ class NeuralNetwork:
             print 'Neuron error: ' + str(neuron.error)
             
                 
-        
+"""
+The Neuron class (or node) of the NeuralNetwork houses weights (biases)
+and can use these to process input vectors. Additionally, neurons
+can calculate their own error in relation to other neuron's errors and
+can update their own weights based on outputs and errors of surrounding
+neurons.
+
+Note: max_depth is N-1 if there are N layers to the ANN.
+"""        
 class Neuron:
+
     """
-    Note: max_depth is N-1 if there are N layers to the ANN.
+    Construction:
+    
+    @param input_size : the number of original inputs the input layer nodes
+        receive.
+    @param depth : equal to the depth of the layer that houses this neuron, 
+        the index of this neuron's parent layer in NeuralNetwork.layers list.
+    @param max_depth : the greatest index of NeuralNetwork.layers list, also
+        the index of the final layer.
+    @param learning_rate : factor determining how great an effect
+        backpropogation has on updating weights of this neuron.
+    @param target : if this is a final layer neuron, the target is the 
+        'correct' value of the original input vector for example when 
+        training.
+    @param verbose : whether debugging logs should print
+    @param height : the index of this Neuron in its parent Layer.neurons list.
     """
-    def __init__(self, input_size, depth, max_depth, learning_rate, target=None, verbose=False, height=None):
+    def __init__(
+                    self, 
+                    input_size, 
+                    depth, 
+                    max_depth, 
+                    learning_rate, 
+                    target=None, 
+                    verbose=False, 
+                    height=None
+    ):
         self.input_size = input_size
         self.learning_rate = learning_rate
         self.max_depth = max_depth
         self.depth = depth
         self.target = target # only final Neurons should have a non None target
-        self.output = None # the dot product of current input vector and current weights, overwritten on each forward pass
+        self.output = None # overwritten on forward pass
         self.input_vector = [] # overwritten on forward pass
-        self.weights = []
+        self.weights = [] 
         self.layer_type = self.get_my_layer_type()
-        self.verbose = verbose
+        self.verbose = verbose # should do printouts
         self.error = None
         self.height = height
         for x in range(0, self.input_size):
@@ -228,27 +287,11 @@ class Neuron:
         
     """
     The calculate_my_error function calculates and then sets an error value 
-    on the self object. 
-    
-    The error is determined differently depending on the neuron type.
-    
-    If layer type is:
-    final:
-        Straightforward: E = Output * (1-Output) * (Target - Output)
-        
-    output || hidden:
-        More involved: E = Output * (1-Output) * ( Sum of Each Plus One neuron's error multiplied by its corresponding weight for the self neuron calculating its error)
-        
-    input:
-        No error is calculated for input layer, since input layer weights can be updated
-        using only the errors from the +1 layer.
-        
+    on this Neuron.
     """
     def calculate_my_error(self, plus_one_layer=None):
         if self.verbose:
-            print ""
-            print '@@@@'
-            print 'calculate my error called for neuron:'
+            print 'Neuron.calculate_my_error called for neuron:'
             self.print_debug_info()
             print 'Neuron\'s layer type was: ' + self.layer_type
         my_layer_type = self.layer_type
@@ -261,10 +304,16 @@ class Neuron:
             error_term =  (self.target - self.output)
         elif (my_layer_type in ['output','hidden', 'input']):
             if plus_one_layer == None:
-                raise ValueError("""Since this neuron is hidden, input, or output type,
-                                     it requires a plus one layer, however it was supplied
-                                     with None when calculating its error""")
-            plus_one_layer.load_error_vector() # get updated values of errors from its neurons
+                raise ValueError(
+                                    """
+                                    Since this neuron is hidden, input, or
+                                    output type, it requires a plus one layer, 
+                                    however it was supplied with None when 
+                                    calculating its error
+                                    """
+                )
+            # get updated values of errors from its neurons:
+            plus_one_layer.load_error_vector() 
             for neuron in plus_one_layer.neurons:
                 error_term += neuron.error * (neuron.weights[self.height])   
         my_error = sigmoid_factor * error_term
@@ -276,19 +325,29 @@ class Neuron:
     its weights based on its error and the 
     """
 
-    def update_my_weights(self, minus_one_layer=None, original_input_vector=None):
+    def update_my_weights(
+                            self, 
+                            minus_one_layer=None, 
+                            original_input_vector=None
+    ):
         new_weights = []
-        if ((self.layer_type == 'input') & (original_input_vector==None)):
+        if ( (self.layer_type == 'input') & (original_input_vector == None) ):
             raise ValueError(
-                """Update my weights called on an input neuron, 
-                but the original vector passed was None."""
+                """
+                Update my weights called on an input neuron, 
+                but the original vector passed was None.
+                """
             )
-        if ((self.layer_type in ['final', 'output', 'hidden']) & (minus_one_layer==None)):
+        if ( 
+            (self.layer_type in ['final', 'output', 'hidden']) & 
+            (minus_one_layer==None)
+        ):
             raise ValueError(
-                """Update my weights called on hidden, output or final 
+                """
+                Neuron.update_my_weights called on hidden, output or final 
                 neuron but the minus one layer was None. Please call this 
-                function on this neuron with a minus_one_layer so it can incorporate
-                that's outputs into the new weights.
+                function on this neuron with a minus_one_layer so that
+                it can incorporate these outputs into the new weights.
                 """
             )
             
@@ -299,10 +358,19 @@ class Neuron:
                 focus_output = minus_one_layer.neurons[idx].output
             else:
                 raise ValueError(
-                    """In update my weights, this neuron had layer type %s, 
-                    and was not a valid type.""" % self.layer_type
+                    """
+                    In update my weights, this neuron had layer type %s, 
+                    and was not a valid type.
+                    """ % self.layer_type
                 )
-            new_weights.append(weight + (self.error * focus_output * self.learning_rate))
+            new_weights.append(
+                                weight + 
+                                (
+                                    self.learning_rate *                                
+                                    self.error * 
+                                    focus_output
+                                )
+            )
         self.weights = new_weights
         return self.weights
         
@@ -312,7 +380,16 @@ an input vector, and giving an output vector that will be the input vector
 for the next layer in front of it.
 """
 class Layer:
-    def __init__(self, width, input_size, depth, max_depth, learning_rate, verbose=False, target_vector=[]):
+    def __init__(
+                    self, 
+                    width, 
+                    input_size, 
+                    depth, 
+                    max_depth, 
+                    learning_rate, 
+                    verbose=False, 
+                    target_vector=[]
+    ):
         self.width = width
         self.learning_rate = learning_rate
         self.neurons = []
@@ -325,8 +402,16 @@ class Layer:
         self.target_vector = target_vector
         self.layer_type = self.get_my_layer_type()
         for x in range (0, self.width):
-            self.neurons.append(Neuron(input_size, depth, max_depth, learning_rate, verbose=self.verbose, height=x))
-            
+            self.neurons.append(
+                                Neuron(
+                                        input_size, 
+                                        depth, 
+                                        max_depth, 
+                                        learning_rate, 
+                                        verbose=self.verbose, 
+                                        height=x
+                                )
+            )
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)        
         
@@ -337,17 +422,29 @@ class Layer:
             print 'Processing input vector: '
             print input_vector
         for idx, neuron in enumerate(self.neurons):
-            self.output_vector.append(neuron.process_input_vector(input_vector))
+            self.output_vector.append(
+                            neuron.process_input_vector(input_vector)
+            )
             if self.verbose:
                 print "Determining if final neuron for target attribution."
             if neuron.layer_type == 'final':
                 my_target = target_vector[idx]
                 neuron.target = my_target
                 if self.verbose:
-                    print "This was a final neuron, so target was assigned of %d." % my_target
+                    print (
+                                """
+                                This was a final neuron, so 
+                                target was assigned as %d.
+                                """ % my_target
+                    )
             else:
                 if self.verbose:
-                    print "This was not a final neuron, so no target was assigned."
+                    print (
+                            """
+                            This was not a final neuron, 
+                            so no target was assigned.
+                            """
+                    )
             if self.verbose:
                 print "Info on this neuron:"
                 neuron.print_debug_info()
@@ -363,7 +460,8 @@ depth of the neural network. A Neuron and Layer could potentially require
 needing to know which type of layer it is in when making decisions.
 """
 def get_my_layer_type(my_depth, max_depth, verbose=False):
-    net_has_hidden_layers = max_depth > 1 # zero indexed, needs at least 3 layers to have hidden layer
+    # zero indexed, needs at least 3 layers to have hidden layer
+    net_has_hidden_layers = max_depth > 1
     if verbose:
         print "Get my layer called."
         print "my depth: " + str(my_depth)
@@ -379,10 +477,12 @@ def get_my_layer_type(my_depth, max_depth, verbose=False):
         my_type = 'hidden'
 
     if (my_type=='unknown'):
-        raise ValueError("""
+        raise ValueError(
+                            """
                             Could not determine type of this Layer.
-                             This layer's depth is %d while max depth was %d."""
-                             % (my_depth, max_depth))    
+                            This layer's depth is %d while max depth was %d.
+                            """ % (my_depth, max_depth)
+        )    
     if verbose:
         print "layer type was determined as: " + my_type
     return my_type    
