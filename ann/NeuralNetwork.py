@@ -197,7 +197,7 @@ class Neuron:
                                      with None when calculating its error""")
             plus_one_layer.load_error_vector() # get updated values of errors from its neurons
             for neuron in plus_one_layer.neurons:
-                error_term = error_term + neuron.error * (neuron.weights[self.height])   
+                error_term += neuron.error * (neuron.weights[self.height])   
         else:
             if self.verbose:
                 print "Neuron is input type, so no error is necessary to calculate."
