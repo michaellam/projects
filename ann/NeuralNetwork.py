@@ -87,7 +87,8 @@ class NeuralNetwork:
                 if type input:
                     return None
         """
-        for layer in self.layers:
+        for x in range(len(self.layers), 0, -1): # go from final to input layer
+            layer = self.layers[x-1]
             plus_one_layer = None
             if layer.layer_type != 'final':
                 plus_one_layer = self.layers[layer.depth + 1]
@@ -95,6 +96,11 @@ class NeuralNetwork:
                 neuron.calculate_my_error(plus_one_layer=plus_one_layer)
         if self.verbose:
             print "Finished backpropogating error"
+            
+    def get_neuron(self, depth, height):
+        layer = self.layers[depth]
+        neuron = layer.neurons[height]
+        return neuron
                 
         
 class Neuron:
@@ -181,31 +187,36 @@ class Neuron:
         
     """
     def calculate_my_error(self, plus_one_layer=None):
+        if self.verbose:
+            print ""
+            print '@@@@'
+            print 'calculate my error called for neuron:'
+            self.print_debug_info()
+            print 'Neuron\'s layer type was: ' + self.layer_type
         my_layer_type = self.layer_type
-        error = 0
+        
+        sigmoid_factor = self.output * (1 - self.output)
+        error_term = 0
+        my_error = 0
+        
         if my_layer_type=='final':
-            error = self.output * (1 - self.output) * (self.target - self.output)
+            error_term =  (self.target - self.output)
         elif (my_layer_type=='output') or (my_layer_type=='hidden'):
-            if self.verbose:
-                print 'Calculating internal error of hidden or output level neuron.'
             if plus_one_layer == None:
                 raise ValueError("""Since this neuron is hidden or output type,
                                      it requires a plus one layer, however it was supplied
                                      with None when calculating its error""")
             plus_one_layer.load_error_vector() # get updated values of errors from its neurons
-            error_vector = plus_one_layer.error_vector
-            my_weights_dot_error = 0
-            for x in range(0, len(self.weights)):
-                print 'foo'
-                
-            
+            for neuron in plus_one_layer.neurons:
+                error_term = error_term + neuron.error * (neuron.weights[self.height])   
         else:
-            print 'bar'
+            if self.verbose:
+                print "Neuron is input type, so no error is necessary to calculate."
             return # input layer does not have error vector
-        self.error = error
-            
+        my_error = sigmoid_factor * error_term
+        self.error = my_error
+        return self.error
         
-
 """
 The Layer is an array of Neurons. The Layer is repsonsible for taking in 
 an input vector, and giving an output vector that will be the input vector
