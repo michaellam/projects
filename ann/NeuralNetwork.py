@@ -245,17 +245,18 @@ class Neuron:
     """
     Returns info about this Neuron for debugging purposes
     """
-    def print_debug_info(self):
+    def print_debug_info(self, short=False):
         print '================='
         print '== Im a Neuron =='
         print 'My type: ' + self.layer_type
         print 'My depth: ' + str(self.depth)
         print 'My height: ' + str(self.height)
-        print 'My output: ' + str(self.output)
-        print 'My target: ' + str(self.target)
-        print 'My Error: ' + str(self.error)
-        print 'My weights:' + ', '.join(str(x) for x in self.weights)
-        print 'My input vector: ' + ', '.join(str(x) for x in self.input_vector)
+        if short != True:
+            print 'My output: ' + str(self.output)
+            print 'My target: ' + str(self.target)
+            print 'My Error: ' + str(self.error)
+            print 'My weights:' + ', '.join(str(x) for x in self.weights)
+            print 'My input vector: ' + ', '.join(str(x) for x in self.input_vector)
         print '== That is All =='
         print '================='
 
@@ -281,7 +282,7 @@ class Neuron:
         self.output = output
         if self.verbose:
             print 'Processing input vector: '
-            self.print_debug_info()
+            self.print_debug_info(short=True)
         return output
         
         
@@ -292,7 +293,7 @@ class Neuron:
     def calculate_my_error(self, plus_one_layer=None):
         if self.verbose:
             print 'Neuron.calculate_my_error called for neuron:'
-            self.print_debug_info()
+            self.print_debug_info(short=True)
             print 'Neuron\'s layer type was: ' + self.layer_type
         my_layer_type = self.layer_type
         
@@ -447,7 +448,7 @@ class Layer:
                     )
             if self.verbose:
                 print "Info on this neuron:"
-                neuron.print_debug_info()
+                neuron.print_debug_info(short=True)
             
     def load_error_vector(self):
         self.error_vector = []
