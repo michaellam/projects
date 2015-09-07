@@ -13,7 +13,11 @@ class NeuralNetwork:
                     learning_rate=1, 
                     sizes=[2,1], 
                     minimum_error=0.10, 
-                    verbose=False
+                    verbose=False,
+                    from_json=False,
+                    json_network_data=None,
+                    json_neurons_data=None,
+                    json_path=None
     ):
         if (input_size == None):
             raise ValueError("Input size cannot be None type.")
@@ -25,22 +29,52 @@ class NeuralNetwork:
         self.max_depth = len(sizes) - 1
         self.verbose = verbose
         self.target_vector = None # only set when doing a forward pass
-        for x in range(0, len(sizes)):
-            if (x==0):
-                input_size = self.input_size
-            else:
-                input_size = self.sizes[x-1]
-            depth = x
-            self.layers.append (
-                                Layer (
-                                        sizes[x], 
-                                        input_size, 
-                                        depth, 
-                                        self.max_depth, 
-                                        self.learning_rate, 
-                                        verbose=self.verbose
-                                )
-            )
+        
+        if (from_json != True ):
+            if self.verbose:
+                print 'Initing with random weights'
+            for x in range(0, len(sizes)):
+                if (x==0):
+                    input_size = self.input_size
+                else:
+                    input_size = self.sizes[x-1]
+                depth = x
+                self.layers.append (
+                                    Layer (
+                                            sizes[x], 
+                                            input_size, 
+                                            depth, 
+                                            self.max_depth, 
+                                            self.learning_rate, 
+                                            verbose=self.verbose
+                                    )
+                )
+        elif (from_json == True):
+            if self.verbose:
+                print 'Initing from JSON file at %s' % json_path 
+            #TODO: add initing loops and Neuron constructor to handle JSON
+            #loading.
+            
+    @classmethod
+    def from_json(cls, json_path):
+        print 'initing from_json method'
+        data = Utils.load_json(json_path)
+        print data
+        # first element is always info about the network as a whole
+        network_data = data.pop(0) 
+        neurons_data = data
+        return cls(
+                    network_data['input_size'],
+                    network_data['learning_rate'],
+                    network_data['sizes'],
+                    network_data['minimum_error'],
+                    network_data['verbose'],
+                    from_json=True,
+                    json_network_data=network_data,
+                    json_neurons_data=neurons_data,
+                    json_path=json_path
+        )
+        
     
     """
     The forward_pass method takes in an input vector and a target vector, 
@@ -183,6 +217,46 @@ class NeuralNetwork:
             print 'Neuron output: ' + str(neuron.output)
             print 'Neuron target: ' + str(neuron.target)
             print 'Neuron error: ' + str(neuron.error)
+            
+
+    """
+    Saves one json file containing meta data 
+    for the network as a whole as the first element in the zero index,
+    and in indexes from 1 on information for each neuron. The neurons are 
+    stored in order from layer 0 to n-1 and within each layer the neurons are
+    stored in order of height from 0 to m-1.
+    
+    @params filepath : the name of the file to export this network to
+    """            
+    def save_network(self, file_path):
+        
+        export_data = []
+        
+        # extract meta data:
+        neural_network_data = {}
+        neural_network_data['learning_rate'] = self.learning_rate
+        neural_network_data['sizes'] = self.sizes
+        neural_network_data['input_size'] = self.input_size
+        neural_network_data['minimum_error'] = self.minimum_error
+        neural_network_data['max_depth'] = self.max_depth
+        neural_network_data['verbose'] = self.verbose
+        neural_network_data['record_type'] = 'neural_network'
+        export_data.append(neural_network_data)
+        
+        # extract neuron weight data for each neuron:
+        for layer in self.layers:
+            for neuron in layer.neurons:
+                neuron_data = {}
+                neuron_data['weights'] = neuron.weights
+                neuron_data['height'] = neuron.height
+                neuron_data['depth'] = neuron.depth
+                neuron_data['record_type'] = 'neuron'
+                export_data.append(neuron_data)
+                
+        Utils.dump_json(export_data, filepath)
+        
+        if self.verbose:
+            print 'Done exporting network to %s' % file_path
             
                 
 """
