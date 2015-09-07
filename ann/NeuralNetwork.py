@@ -49,11 +49,11 @@ class NeuralNetwork:
                                             verbose=self.verbose
                                     )
                 )
-        elif (from_json == True):
+        # init all layers with neurons and their saved weights:
+        else:
             if self.verbose:
                 print 'Initing from JSON file at %s' % json_path 
-            #TODO: add initing loops and Neuron constructor to handle JSON
-            #loading.
+            
             
     @classmethod
     def from_json(cls, json_path):
@@ -250,10 +250,15 @@ class NeuralNetwork:
                 neuron_data['weights'] = neuron.weights
                 neuron_data['height'] = neuron.height
                 neuron_data['depth'] = neuron.depth
+                neuron_data['input_size'] = neuron.input_size
+                neuron_data['max_depth'] = neuron.max_depth
+                neuron_data['learning_rate'] = neuron.learning_rate
+                neuron_data['verbose'] = neuron.verbose
+                
                 neuron_data['record_type'] = 'neuron'
                 export_data.append(neuron_data)
                 
-        Utils.dump_json(export_data, filepath)
+        Utils.dump_json(export_data, file_path)
         
         if self.verbose:
             print 'Done exporting network to %s' % file_path
@@ -295,23 +300,66 @@ class Neuron:
                     learning_rate, 
                     target=None, 
                     verbose=False, 
-                    height=None
+                    height=None,
+                    json_weights=None
     ):
+        # consts:
         self.input_size = input_size
         self.learning_rate = learning_rate
         self.max_depth = max_depth
         self.depth = depth
+        self.layer_type = self.get_my_layer_type()
+        self.verbose = verbose # should do printouts
+        self.height = height
+
+        # cycle variables:        
         self.target = target # only final Neurons should have a non None target
         self.output = None # overwritten on forward pass
         self.input_vector = [] # overwritten on forward pass
         self.weights = [] 
-        self.layer_type = self.get_my_layer_type()
-        self.verbose = verbose # should do printouts
         self.error = None
-        self.height = height
-        for x in range(0, self.input_size):
-            self.weights.append(Utils.generate_random_weight())
+        
+        # init weights either randomly, or by loading json:
+        if (json_weights is None):
+            for x in range(0, self.input_size):
+                self.weights.append(Utils.generate_random_weight())
+        else:
+            if self.verbose:
+                print 'Initializing weights for neuron using json'
+            self.weights = json_weights
+            
         self.layer_type = get_my_layer_type(self.depth, self.max_depth)
+        
+        if self.verbose:
+            print 'Done intiing neuron'
+
+    @classmethod
+    def from_json(cls, data):
+        
+        input_size = data['input_size']        
+        depth = data['depth']
+        max_depth = data['max_depth']
+        learning_rate = data['learning_rate']
+        # not needed right now.
+        target = None 
+        
+        height = data['height']
+
+
+        json_weights = data['weights']
+        verbose = data['verbose']
+
+        
+        return cls(
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    target = target,
+                    verbose = verbose,
+                    height = height,
+                    json_weights = json_weights
+        )
 
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)
