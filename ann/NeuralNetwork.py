@@ -4,7 +4,8 @@ import math
 class NeuralNetwork:
     """
     Note: Layer indexes go from left to right (Index: Left 0 to N-1 Right). 
-    Depth also goes from left to right. Given this, input layers should 
+    Depth also goes from left to right (min depth is 0 on left, max depth 
+    is D-1 on the right). Given this, input layers should 
     have zero depth values, and output layers should have max depth value.
     """
     def __init__(
@@ -13,7 +14,11 @@ class NeuralNetwork:
                     learning_rate=1, 
                     sizes=[2,1], 
                     minimum_error=0.10, 
-                    verbose=False
+                    verbose=False,
+                    from_json=False,
+                    json_network_data=None,
+                    json_neurons_data=None,
+                    json_path=None
     ):
         if (input_size == None):
             raise ValueError("Input size cannot be None type.")
@@ -25,27 +30,87 @@ class NeuralNetwork:
         self.max_depth = len(sizes) - 1
         self.verbose = verbose
         self.target_vector = None # only set when doing a forward pass
-        for x in range(0, len(sizes)):
-            if (x==0):
-                input_size = self.input_size
-            else:
-                input_size = self.sizes[x-1]
-            depth = x
-            self.layers.append (
-                                Layer (
-                                        sizes[x], 
-                                        input_size, 
-                                        depth, 
-                                        self.max_depth, 
-                                        self.learning_rate, 
-                                        verbose=self.verbose
-                                )
-            )
+        
+        # when making a new randomized NN for training
+        if (from_json != True ):
+            if self.verbose:
+                print 'Initing with random weights'
+            for x in range(0, len(sizes)):
+                if (x==0):
+                    input_size = self.input_size
+                else:
+                    input_size = self.sizes[x-1]
+                depth = x
+                self.layers.append (
+                                    Layer (
+                                            sizes[x], 
+                                            input_size, 
+                                            depth, 
+                                            self.max_depth, 
+                                            self.learning_rate, 
+                                            verbose=self.verbose
+                                    )
+                )
+                
+        # when loading a saved JSON representation of a NN
+        elif (from_json == True):
+            if self.verbose:
+                print 'Initing from JSON file at %s' % json_path 
+                
+            for i in range(0, len(self.sizes)):
+                size = self.sizes[i]
+                depth = i
+                # neuron data for the current layer being created
+                neurons_data = []
+                for x in range(0, size):
+                    neurons_data.append(json_neurons_data.pop(0))
+                layer = Layer.from_json(
+                                        size, 
+                                        self.input_size,
+                                        depth,
+                                        self.max_depth,
+                                        self.learning_rate,
+                                        # extra info for regular init constructor
+                                        neurons_data,
+                                        verbose=self.verbose,
+                                        target_vector=self.target_vector
+                )
+                self.layers.append(layer)
+            if self.verbose:
+                print "Done adding all layers"
+    
+    """
+    Alternative classmethod constructor which loads an NN from the JSON
+    export file produced by NeuralNetwork.save_network(...)
+    
+    @param json_path : the full name of the JSON file produced by 
+    NeuralNetwork.save_network(...)
+    """    
+    @classmethod
+    def from_json(cls, json_path):
+        print 'initing from_json method'
+        data = Utils.load_json(json_path)
+        print data
+        # first element is always info about the network as a whole
+        network_data = data.pop(0) 
+        neurons_data = data
+        return cls(
+                    network_data['input_size'],
+                    network_data['learning_rate'],
+                    network_data['sizes'],
+                    network_data['minimum_error'],
+                    network_data['verbose'],
+                    from_json=True,
+                    json_network_data=network_data,
+                    json_neurons_data=neurons_data,
+                    json_path=json_path
+        )
+        
     
     """
     The forward_pass method takes in an input vector and a target vector, 
-    feeds it through all neurons, and returns an output vector with 
-    the same dimensionality of the target vector.
+    feeds the input vector through all neurons, and returns an output vector 
+    with the same dimensionality as the target vector.
     """
     def forward_pass(
                         self, 
@@ -93,7 +158,8 @@ class NeuralNetwork:
     small.
     
     This method goes backwards layer by layer, and calculates the error
-    for each applicable Neuron.
+    for each applicable Neuron; the current error is then stored on each
+    Neuron instance in the NN.
     
     After this method is called, all error is current in the Network, and
     a method update_weights should then be called before doing another 
@@ -141,7 +207,11 @@ class NeuralNetwork:
                 )
         if self.verbose:
             print 'Done updating all weights'
-            
+    
+    """
+    A helper method for returning a Neuron instance at a given depth 
+    and height in the NN.
+    """       
     def get_neuron(self, depth, height):
         layer = self.layers[depth]
         neuron = layer.neurons[height]
@@ -173,7 +243,11 @@ class NeuralNetwork:
             for neuron in layer.neurons:
                 error += abs(neuron.error)
         return error
-        
+    
+    """
+    Debug method for showing the last outputs and error of all neurons
+    in a layer.
+    """
     def print_outputs(self):
         output_layer = self.layers[self.max_depth]
         print "==="
@@ -183,6 +257,56 @@ class NeuralNetwork:
             print 'Neuron output: ' + str(neuron.output)
             print 'Neuron target: ' + str(neuron.target)
             print 'Neuron error: ' + str(neuron.error)
+            
+
+    """
+    Saves one json file containing meta data 
+    for the network as a whole in a JSON array with the first element in 
+    the zero index, and in indexes from 1 on information for each neuron. 
+    The neurons are stored in order from layer 0 to n-1 and within 
+    each layer the neurons are stored in order of height from 0 to m-1.
+    
+    So a visual representation of this file would be the zero index being 
+    meta data, and then, it starts at the top left of the network, works its
+    way down through the layer, then moves to the top of the layer on its right.
+    This progresses until all neurons are accounted for in the JSON array file.
+    
+    @params filepath : the name of the file to export this network to
+    """            
+    def save_network(self, file_path):
+        
+        export_data = []
+        
+        # extract meta data:
+        neural_network_data = {}
+        neural_network_data['learning_rate'] = self.learning_rate
+        neural_network_data['sizes'] = self.sizes
+        neural_network_data['input_size'] = self.input_size
+        neural_network_data['minimum_error'] = self.minimum_error
+        neural_network_data['max_depth'] = self.max_depth
+        neural_network_data['verbose'] = self.verbose
+        neural_network_data['record_type'] = 'neural_network'
+        export_data.append(neural_network_data)
+        
+        # extract neuron weight data for each neuron:
+        for layer in self.layers:
+            for neuron in layer.neurons:
+                neuron_data = {}
+                neuron_data['weights'] = neuron.weights
+                neuron_data['height'] = neuron.height
+                neuron_data['depth'] = neuron.depth
+                neuron_data['input_size'] = neuron.input_size
+                neuron_data['max_depth'] = neuron.max_depth
+                neuron_data['learning_rate'] = neuron.learning_rate
+                neuron_data['verbose'] = neuron.verbose
+                
+                neuron_data['record_type'] = 'neuron'
+                export_data.append(neuron_data)
+                
+        Utils.dump_json(export_data, file_path)
+        
+        if self.verbose:
+            print 'Done exporting network to %s' % file_path
             
                 
 """
@@ -221,24 +345,78 @@ class Neuron:
                     learning_rate, 
                     target=None, 
                     verbose=False, 
-                    height=None
+                    height=None,
+                    json_weights=None
     ):
+        # consts:
         self.input_size = input_size
         self.learning_rate = learning_rate
         self.max_depth = max_depth
         self.depth = depth
+        self.layer_type = self.get_my_layer_type()
+        self.verbose = verbose # should do printouts
+        self.height = height
+
+        # cycle variables:        
         self.target = target # only final Neurons should have a non None target
         self.output = None # overwritten on forward pass
         self.input_vector = [] # overwritten on forward pass
         self.weights = [] 
-        self.layer_type = self.get_my_layer_type()
-        self.verbose = verbose # should do printouts
         self.error = None
-        self.height = height
-        for x in range(0, self.input_size):
-            self.weights.append(Utils.generate_random_weight())
+        
+        # init weights either randomly, or by loading json:
+        if (json_weights is None):
+            for x in range(0, self.input_size):
+                self.weights.append(Utils.generate_random_weight())
+        else:
+            if self.verbose:
+                print 'Initializing weights for neuron using json'
+            self.weights = json_weights
+            
         self.layer_type = get_my_layer_type(self.depth, self.max_depth)
+        
+        if self.verbose:
+            print 'Done intiing neuron'
 
+    """
+    An alternative constructor for a Neuron, which builds the neuron using 
+    the JSON object representation for this neuron stored in the JSON export
+    file generated by NeuralNetwork.save_network(...).
+    
+    @param data : the JSON representation of this neuron saved by the 
+    NeuralNetwork.save_network(...) function.
+    """
+    @classmethod
+    def from_json(cls, data):
+        
+        input_size = data['input_size']        
+        depth = data['depth']
+        max_depth = data['max_depth']
+        learning_rate = data['learning_rate']
+        # not needed right now.
+        target = None 
+        
+        height = data['height']
+
+
+        json_weights = data['weights']
+        verbose = data['verbose']
+
+        
+        return cls(
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    target = target,
+                    verbose = verbose,
+                    height = height,
+                    json_weights = json_weights
+        )
+
+    """
+    Helper method to determine this neuron's layer type.
+    """
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)
 
@@ -262,8 +440,9 @@ class Neuron:
 
     """
     Takes an array of inputs and performs a dot product with this neuron's 
-    weights. Sets this neuron's output to the result of dot product and returns
-    dot product.
+    weights, and then smooths the output using a sigmoid function.
+    Sets this neuron's output to the result of this smoothing function and 
+    returns the output from this neuron.
     """
     def process_input_vector(self, input_vector):
         self.input_vector = input_vector
@@ -389,7 +568,9 @@ class Layer:
                     max_depth, 
                     learning_rate, 
                     verbose=False, 
-                    target_vector=[]
+                    target_vector=[],
+                    # json loading:
+                    neurons_from_json = None
     ):
         self.width = width
         self.learning_rate = learning_rate
@@ -402,17 +583,64 @@ class Layer:
         self.error_vector = []
         self.target_vector = target_vector
         self.layer_type = self.get_my_layer_type()
-        for x in range (0, self.width):
-            self.neurons.append(
-                                Neuron(
-                                        input_size, 
-                                        depth, 
-                                        max_depth, 
-                                        learning_rate, 
-                                        verbose=self.verbose, 
-                                        height=x
-                                )
-            )
+        if (neurons_from_json is None):
+            for x in range (0, self.width):
+                self.neurons.append(
+                                    Neuron(
+                                            input_size, 
+                                            depth, 
+                                            max_depth, 
+                                            learning_rate, 
+                                            verbose=self.verbose, 
+                                            height=x
+                                    )
+                )
+        else:
+            if self.verbose:
+                print "Initing layer with json neurons"
+            self.neurons = neurons_from_json
+            
+    """
+    An alternative constructor for Layer which creates and initializes a 
+    Layer with neuron weight data from JSON export file produced by 
+    NeuralNetwork.save_network(...)
+    
+    @params data : a list of json objects housing information for each 
+    neuron that should be made in order for this layer's initialization.
+    The index of a json object in data is equal to the height of the specific
+    neuron it represents in this layer.
+    """
+    @classmethod
+    def from_json(
+                    cls, 
+                    width, 
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    # extra info for regular init constructor
+                    neurons_data,
+                    verbose=False,
+                    target_vector=[]
+    ):
+        neurons_from_json=[]
+        for data in neurons_data:
+            neurons_from_json.append(Neuron.from_json(data))
+            
+        return cls(
+                    width,
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    verbose = verbose,
+                    target_vector = target_vector,
+                    neurons_from_json = neurons_from_json
+        )
+        
+        
+        
+    
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)        
         
