@@ -30,6 +30,7 @@ class NeuralNetwork:
         self.verbose = verbose
         self.target_vector = None # only set when doing a forward pass
         
+        # for use when making a new NN for learning something new
         if (from_json != True ):
             if self.verbose:
                 print 'Initing with random weights'
@@ -49,11 +50,33 @@ class NeuralNetwork:
                                             verbose=self.verbose
                                     )
                 )
-        # init all layers with neurons and their saved weights:
-        else:
+                
+        # for use when loading a saved JSON representation of a NN
+        elif (from_json == True):
             if self.verbose:
                 print 'Initing from JSON file at %s' % json_path 
-            
+                
+            for i in range(0, len(self.sizes)):
+                size = self.sizes[i]
+                depth = i
+                # neuron data for the current layer being created
+                neurons_data = []
+                for x in range(0, size):
+                    neurons_data.append(json_neurons_data.pop(0))
+                layer = Layer.from_json(
+                                        size, 
+                                        self.input_size,
+                                        depth,
+                                        self.max_depth,
+                                        self.learning_rate,
+                                        # extra info for regular init constructor
+                                        neurons_data,
+                                        verbose=self.verbose,
+                                        target_vector=self.target_vector
+                )
+                self.layers.append(layer)
+            if self.verbose:
+                print "Done adding all layers"
             
     @classmethod
     def from_json(cls, json_path):
@@ -511,7 +534,9 @@ class Layer:
                     max_depth, 
                     learning_rate, 
                     verbose=False, 
-                    target_vector=[]
+                    target_vector=[],
+                    # json loading:
+                    neurons_from_json = None
     ):
         self.width = width
         self.learning_rate = learning_rate
@@ -524,17 +549,62 @@ class Layer:
         self.error_vector = []
         self.target_vector = target_vector
         self.layer_type = self.get_my_layer_type()
-        for x in range (0, self.width):
-            self.neurons.append(
-                                Neuron(
-                                        input_size, 
-                                        depth, 
-                                        max_depth, 
-                                        learning_rate, 
-                                        verbose=self.verbose, 
-                                        height=x
-                                )
-            )
+        if (neurons_from_json is None):
+            for x in range (0, self.width):
+                self.neurons.append(
+                                    Neuron(
+                                            input_size, 
+                                            depth, 
+                                            max_depth, 
+                                            learning_rate, 
+                                            verbose=self.verbose, 
+                                            height=x
+                                    )
+                )
+        else:
+            if self.verbose:
+                print "Initing layer with json neurons"
+            self.neurons = neurons_from_json
+            
+    """
+    creates and initializes a Layer with neuron weight data from 
+    json loading.
+    @params data : a list of json objects housing information for each 
+    neuron that should be made in order for this layer's initialization.
+    The index of a json object in data is equal to the height of the specific
+    neuron it represents in this layer.
+    """
+    @classmethod
+    def from_json(
+                    cls, 
+                    width, 
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    # extra info for regular init constructor
+                    neurons_data,
+                    verbose=False,
+                    target_vector=[]
+    ):
+        neurons_from_json=[]
+        for data in neurons_data:
+            neurons_from_json.append(Neuron.from_json(data))
+            
+        return cls(
+                    width,
+                    input_size,
+                    depth,
+                    max_depth,
+                    learning_rate,
+                    verbose = verbose,
+                    target_vector = target_vector,
+                    neurons_from_json = neurons_from_json
+        )
+        
+        
+        
+    
     def get_my_layer_type(self):
         return get_my_layer_type(self.depth, self.max_depth)        
         
